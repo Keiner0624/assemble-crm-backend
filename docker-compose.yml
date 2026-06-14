@@ -4,18 +4,45 @@ services:
     container_name: assemble-crm-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: assemble_crm
-      POSTGRES_USER: assemble
-      POSTGRES_PASSWORD: assemble
+      POSTGRES_DB: ${POSTGRES_DB:-assemble_crm}
+      POSTGRES_USER: ${POSTGRES_USER:-assemble}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assemble}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - assemble_crm_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U assemble -d assemble_crm"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-assemble} -d ${POSTGRES_DB:-assemble_crm}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: assemble-crm-backend:local
+    container_name: assemble-crm-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-assemble_crm}
+      DB_USERNAME: ${POSTGRES_USER:-assemble}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-assemble}
+      SERVER_PORT: 8080
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-Y2hhbmdlLW1lLXRoaXMtaXMtYS1kZXYtb25seS1zZWNyZXQtMzJieXRlcyE=}
+      APP_JWT_ACCESS_EXP: ${APP_JWT_ACCESS_EXP:-900000}
+      APP_JWT_REFRESH_EXP: ${APP_JWT_REFRESH_EXP:-604800000}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:4200}
+      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-true}
+    ports:
+      - "${API_PORT:-8080}:8080"
 
 volumes:
   assemble_crm_data:

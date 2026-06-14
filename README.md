@@ -10,15 +10,17 @@ CRM multi-tenant para pequeñas empresas. Backend en **Java 21 + Spring Boot 3.4
 - Maven 3.9+
 - PostgreSQL 16 (o Docker)
 
-## 1. Levantar la base de datos
+## 1. Levantar con Docker
 
-Con Docker (incluido `docker-compose.yml`):
+El `docker-compose.yml` construye el backend y levanta PostgreSQL:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-Esto crea PostgreSQL en `localhost:5432`, base `assemble_crm`, usuario `assemble` / `assemble`.
+La API queda disponible en `http://localhost:8080` y PostgreSQL en
+`localhost:5432`. Antes de usarlo fuera de desarrollo, copia `.env.example`
+a `.env` y cambia `POSTGRES_PASSWORD` y `APP_JWT_SECRET`.
 
 Si usas tu propio PostgreSQL, ajusta las variables (ver más abajo) o `application.yml`.
 
