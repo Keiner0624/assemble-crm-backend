@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -34,6 +35,13 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("Login successful", authService.login(request));
+    }
+
+    @Operation(summary = "Switch an administrator session to an active sales user in the same company")
+    @PostMapping("/switch-to-sales/{userId}")
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    public ApiResponse<AuthResponse> switchToSales(@PathVariable Long userId) {
+        return ApiResponse.ok("Account switched", authService.switchToSalesUser(userId));
     }
 
     @Operation(summary = "Rotate refresh token and obtain a new access token")

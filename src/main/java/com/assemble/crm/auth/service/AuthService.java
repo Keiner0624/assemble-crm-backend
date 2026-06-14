@@ -130,6 +130,22 @@ public class AuthService {
         }
     }
 
+    @Transactional
+    public AuthResponse switchToSalesUser(Long userId) {
+        User target = userRepository.findByIdAndCompanyId(userId, SecurityUtils.currentCompanyId())
+                .orElseThrow(() -> ResourceNotFoundException.of("User", userId));
+        if (!target.isActive()) {
+            throw new BusinessException("The selected sales user is inactive");
+        }
+        if (target.getRole().getName() != RoleName.SALES) {
+            throw new BusinessException("Only sales accounts can be selected");
+        }
+
+        auditService.record(AuditAction.LOGIN, "User", target.getId(),
+                "Administrator switched to sales user " + target.getEmail());
+        return buildAuthResponse(target);
+    }
+
     /** Creates the optional SALES user as part of company registration (same transaction). */
     private void createSalesUser(RegisterCompanyRequest request, Company company, User admin) {
         String salesEmail = request.salesEmail().trim();
