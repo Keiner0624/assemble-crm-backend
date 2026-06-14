@@ -99,6 +99,10 @@ public class AuthService {
         auditService.recordSystem(company.getId(), admin.getId(), AuditAction.CREATE,
                 "Company", company.getId(), "Company registered with admin user");
 
+        if (request.hasSalesUser()) {
+            createSalesUser(request, company, admin);
+        }
+
         return buildAuthResponse(admin);
     }
 
@@ -124,6 +128,40 @@ public class AuthService {
             rateLimiter.recordFailure(key);
             throw ex;
         }
+    }
+
+    /** Creates the optional SALES user as part of company registration (same transaction). */
+    private void createSalesUser(RegisterCompanyRequest request, Company company, User admin) {
+        String salesEmail = request.salesEmail().trim();
+        if (salesEmail.equalsIgnoreCase(request.adminEmail())) {
+            throw new ResourceConflictException("Sales email must be different from the admin email");
+        }
+        if (userRepository.existsByEmail(salesEmail)) {
+            throw new ResourceConflictException("A user with the sales email already exists");
+        }
+        if (request.salesPassword() == null || request.salesPassword().length() < 8) {
+            throw new BusinessException("Sales password must be at least 8 characters");
+        }
+
+        Role salesRole = roleRepository.findByName(RoleName.SALES)
+                .orElseThrow(() -> new BusinessException("SALES role not provisioned"));
+
+        String firstName = (request.salesFirstName() != null && !request.salesFirstName().isBlank())
+                ? request.salesFirstName().trim() : "Vendedor";
+        String lastName = request.salesLastName() != null ? request.salesLastName().trim() : "";
+
+        User sales = userRepository.save(User.builder()
+                .company(company)
+                .role(salesRole)
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(salesEmail)
+                .password(passwordEncoder.encode(request.salesPassword()))
+                .active(true)
+                .build());
+
+        auditService.recordSystem(company.getId(), admin.getId(), AuditAction.CREATE,
+                "User", sales.getId(), "Sales user created during company registration");
     }
 
     @Transactional
